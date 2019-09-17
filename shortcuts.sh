@@ -2,7 +2,7 @@ lint() {
     workingset=$(git diff HEAD --name-only --diff-filter=d)
     committed=$(git diff origin/develop... --name-only --)
     # shellcheck disable=SC2086
-    PIPENV_PIPFILE=./backend/Pipfile pipenv run pre-commit run -v --files $workingset $committed
+    PIPENV_PIPFILE=./Pipfile pipenv run pre-commit run -v --files $workingset $committed
 }
 
 cmd="${1:-}"

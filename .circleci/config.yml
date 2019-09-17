@@ -1,0 +1,186 @@
+version: 2.1
+
+workflows:
+  version: 2
+  test:
+    jobs:
+      - lint
+      - security-django:
+          requires:
+            - lint
+      - security-pipenv:
+          requires:
+            - lint
+      - security-javascript:
+          requires:
+            - lint
+      - test-python:
+          requires:
+            - security-django
+      - test-javascript:
+          requires:
+            - lint
+
+jobs:
+  lint:
+    docker:
+      # Prebaked image with pre-commit.
+      # To make this go faster pre-bake images with dependecies installed
+      # https://hub.docker.com/r/kogancom/circleci-py37-node
+      - image: kogancom/circleci-py37-node
+    resource_class: small
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - pre-commit-dot-cache-{{ checksum ".pre-commit-config.yaml" }}
+            - js-node-modules-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install Yarn & Frontend Packages
+          command: |
+            yarn install --frozen-lockfile
+      - run:
+          name: Run Precommit Hooks
+          command: pre-commit run --show-diff-on-failure --source origin/master --origin HEAD
+      - save_cache:
+          key: pre-commit-dot-cache-{{ checksum ".pre-commit-config.yaml" }}
+          paths:
+            - /home/circleci/.cache/pre-commit
+      - save_cache:
+          key: js-node-modules-{{ checksum "yarn.lock" }}
+          paths:
+            - ./node_modules
+  security-django:
+    docker:
+      - image: kogancom/circleci-py37-node
+        environment:
+          PIPENV_VENV_IN_PROJECT: true
+    resource_class: small
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - pipenv-37-venv-cache-{{ checksum "Pipfile.lock" }}
+      - run:
+          name: Install Python Packages
+          command: |
+            pipenv install --dev
+      - save_cache:
+          key: pipenv-37-venv-cache-{{ checksum "Pipfile.lock" }}
+          paths:
+            - '/home/circleci/.cache/pipenv'
+            - './.venv'
+      - run:
+          name: Setup Path
+          command: echo 'export PATH=/home/circleci/.local/bin:$PATH' >> $BASH_ENV
+      - run:
+          name: Django Security
+          command: |
+            pipenv run python manage.py check --deploy --fail-level WARNING --settings=backend.settings.prod
+  security-pipenv:
+    docker:
+      - image: kogancom/circleci-py37-node
+    resource_class: small
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - pipenv-37-security-cache-{{ checksum "Pipfile.lock" }}
+      - save_cache:
+          key: pipenv-37-security-cache-{{ checksum "Pipfile.lock" }}
+          paths:
+            - /home/circleci/.cache/pipenv
+      - run:
+          name: Python Security
+          command: |
+            pipenv check
+  security-javascript:
+    docker:
+      - image: circleci/node:10
+    resource_class: medium
+    steps:
+      - checkout
+      - restore_cache:
+          key: js-node-modules-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install Frontend Packages
+          command: |
+            mkdir test-reports
+            yarn install --frozen-lockfile
+      - save_cache:
+          key: js-node-modules-{{ checksum "yarn.lock" }}
+          paths:
+            - ./node_modules
+      - run:
+          name: Javascript Security
+          command: |
+            yarn audit || true # dont fail the entire build
+  test-python:
+    docker:
+      - image: kogancom/circleci-py37-node
+        environment:
+          PIPENV_VENV_IN_PROJECT: true
+      - image: circleci/redis:4.0.14
+      - image: circleci/postgres:11
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: database_name
+    resource_class: medium
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - pipenv-37-venv-cache-{{ checksum "Pipfile.lock" }}
+      - run:
+          name: Install Python Packages
+          command: |
+            pipenv install --dev
+      - save_cache:
+          key: pipenv-37-venv-cache-{{ checksum "Pipfile.lock" }}
+          paths:
+            - '/home/circleci/.cache/pipenv'
+            - './.venv'
+      - run:
+          name: Setup Path
+          command: echo 'export PATH=/home/circleci/.local/bin:$PATH' >> $BASH_ENV
+      - run:
+          name: Py Tests
+          environment:
+            DJANGO_SETTINGS_MODULE: backend.settings.test
+            DATABASE_URL: postgres://postgres@localhost:5432/database_name
+            REDIS_URL: redis://localhost:6379
+            BROKER_URL: 'redis://redis:6379//'
+          command: |
+            mkdir test-reports
+            pipenv run pytest --tb=native --durations=20 --create-db --log-level=ERROR --cov-config=.coveragerc --cov=./ --cov-report term --cov-report html:test-reports/coverage --junitxml=test-reports/junit.xml
+      - store_test_results:
+          path: backend/test-reports
+      - store_artifacts:
+          path: backend/test-reports
+  test-javascript:
+    docker:
+      - image: circleci/node:10
+    resource_class: medium
+    steps:
+      - checkout
+      - restore_cache:
+          key: js-node-modules-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install Frontend Packages
+          command: |
+            mkdir test-reports
+            yarn install --frozen-lockfile
+      - save_cache:
+          key: js-node-modules-{{ checksum "yarn.lock" }}
+          paths:
+            - ./node_modules
+      - run:
+          name: Js Tests
+          environment:
+            JEST_JUNIT_OUTPUT: 'test-reports/js-test-results.xml'
+          command: |
+            yarn run test
+      - store_test_results:
+          path: frontend/test-reports
+      - store_artifacts:
+          path: frontend/test-reports
