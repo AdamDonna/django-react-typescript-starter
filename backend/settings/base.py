@@ -1,4 +1,5 @@
 import os
+import dj_database_url
 
 BASE_DIR = os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))))
@@ -14,8 +15,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+    'django.contrib.postgres',
     'corsheaders',
     'rest_framework',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -52,9 +55,15 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
+SITE_ID = 1
 
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'build/static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+DATABASES = {
+    "default": dj_database_url.config(conn_max_age=500),
+}
+DATABASES['default']['engine'] = "django.db.backends.postgresql_psycopg2"

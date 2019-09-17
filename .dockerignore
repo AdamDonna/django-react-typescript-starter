@@ -1,0 +1,12 @@
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+.vscode
+**/.awcache
+**/.pytest_cache
+**/coverage
+**/node_modules
+static/build/
+**/__pycache__
+*.pyc

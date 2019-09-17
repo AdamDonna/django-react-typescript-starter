@@ -6,17 +6,6 @@ DEBUG = False
 ALLOWED_HOSTS += ['http://domain.com']
 WSGI_APPLICATION = 'backend.wsgi.prod.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'db_name',
-        'USER': 'db_user',
-        'PASSWORD': 'db_password',
-        'HOST': 'localhost',
-        'PORT': '',
-    }
-}
-
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},

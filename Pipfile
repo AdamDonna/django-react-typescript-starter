@@ -4,12 +4,22 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+pre-commit = "*"
+black = "==19.3b0"
 
 [packages]
 django = "*"
-corsheaders = "*"
 django-cors-headers = "*"
 django-rest-framework = "*"
+celery = "*"
+django-extensions = "*"
+werkzeug = "*"
+dj-database-url = "*"
+psycopg2-binary = "~=2.8.3"
+
 
 [requires]
-python_version = "3.5"
+python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
