@@ -5,7 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 pre-commit = "*"
-black = "==19.3b0"
+black = "==19.10b0"
 
 [packages]
 django = "==2.2.8"
